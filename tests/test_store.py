@@ -1,6 +1,7 @@
 """Tests for VectorStore - defines the contract for the sqlite-vec backend."""
 
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -224,3 +225,49 @@ class TestStats:
         assert stats["count"] == 0
         assert "data_path" in stats
         assert "collection" in stats
+
+
+class TestThreadSafety:
+    def test_upsert_from_different_thread(self, store):
+        """VectorStore operations work when called from a non-creator thread."""
+        chunk = make_chunk("c1", "Hello from thread", "notes/thread.md")
+        embedding = [1.0, 0.0, 0.0, 0.0]
+        error = None
+
+        def worker():
+            nonlocal error
+            try:
+                store.upsert(chunk, embedding)
+            except Exception as e:
+                error = e
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+
+        assert error is None, f"Cross-thread upsert failed: {error}"
+        results = store.search([1.0, 0.0, 0.0, 0.0], limit=1)
+        assert len(results) == 1
+        assert results[0]["content"] == "Hello from thread"
+
+    def test_concurrent_upserts_from_multiple_threads(self, store):
+        """Multiple threads can upsert without corruption."""
+        errors = []
+        num_threads = 5
+
+        def worker(i):
+            try:
+                chunk = make_chunk(f"c{i}", f"Note {i}", f"{i}.md")
+                embedding = [float(i == j) for j in range(DIM)]
+                store.upsert(chunk, embedding)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == [], f"Concurrent upserts failed: {errors}"
+        assert store.get_stats()["count"] == num_threads
