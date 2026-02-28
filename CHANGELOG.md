@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v1.0.2 (2026-02-28)
+
+### Bug Fixes
+
+- Make VectorStore thread-safe for watcher daemon
+  ([#11](https://github.com/ernestkoe/obsidian-notes-rag/pull/11),
+  [`36c236a`](https://github.com/ernestkoe/obsidian-notes-rag/commit/36c236a6a446f5c2d46f5f6ab89cca53703de64c))
+
+The file watcher's DebouncedHandler fires callbacks on threading.Timer threads, but VectorStore's
+  SQLite connection was created on the main thread. This caused every indexing attempt to fail with
+  "SQLite objects created in a thread can only be used in that same thread".
+
+Add check_same_thread=False and a threading.Lock to VectorStore so all public methods are safe to
+  call from any thread.
+
+Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>
+
+
 ## v1.0.1 (2026-02-15)
 
 ### Bug Fixes
