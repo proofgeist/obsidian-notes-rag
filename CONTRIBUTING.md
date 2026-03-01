@@ -4,7 +4,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/ernestkoe/obsidian-notes-rag.git
+git clone https://github.com/proofgeist/obsidian-notes-rag.git
 cd obsidian-notes-rag
 
 # Install with dev dependencies
