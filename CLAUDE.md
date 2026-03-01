@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 obsidian-notes-rag is an MCP (Model Context Protocol) server that provides semantic search over Obsidian notes. It uses OpenAI embeddings by default (or Ollama/LM Studio for local processing) with sqlite-vec for vector storage.
 
 **PyPI:** https://pypi.org/project/obsidian-notes-rag/
+**GitHub:** https://github.com/proofgeist/obsidian-notes-rag
 
 ## Commands
 
@@ -52,7 +53,7 @@ MCP Client ← FastMCP Server ← search_notes/get_similar/etc.
 
 - **config.py**: `Config` dataclass, `load_config()`/`save_config()` for TOML config file, cross-platform paths via `platformdirs`
 - **indexer.py**: `VaultIndexer` scans markdown files, `chunk_markdown()` uses Chonkie RecursiveChunker with markdown-aware rules, `OpenAIEmbedder`/`OllamaEmbedder`/`LMStudioEmbedder` generate embeddings, `create_embedder()` factory selects provider
-- **store.py**: `VectorStore` wraps sqlite-vec with KNN vector search, two tables (chunks metadata + chunks_vec virtual table), handles upsert/delete by file path
+- **store.py**: `VectorStore` wraps sqlite-vec with KNN vector search, two tables (chunks metadata + chunks_vec virtual table), handles upsert/delete by file path. Thread-safe (`check_same_thread=False` + `threading.Lock`).
 - **server.py**: FastMCP server exposing 5 tools: `search_notes`, `get_similar`, `get_note_context`, `get_stats`, `reindex`
 - **watcher.py**: `VaultWatcher` uses watchdog with debouncing (default 2s) to incrementally re-index on file changes
 - **cli.py**: Click-based CLI with `setup` wizard, `--provider` option, commands for indexing, searching, similar, context, watching, and service management
@@ -78,6 +79,22 @@ Environment variables (override config file):
 - `OBSIDIAN_RAG_DATA` - sqlite-vec storage path
 - `OBSIDIAN_RAG_OLLAMA_URL` - Ollama API (default: `http://localhost:11434`)
 - `OBSIDIAN_RAG_MODEL` - Override embedding model
+
+## Watcher Service
+
+Runs as macOS launchd service (`com.obsidian-notes-rag.watcher`):
+- Plist: `~/Library/LaunchAgents/com.obsidian-notes-rag.watcher.plist`
+- Logs: `~/Library/Logs/obsidian-notes-rag/watcher.log`
+- Process title: `obsidian-notes-rag` (via setproctitle)
+- Restart: `launchctl kickstart -k gui/$(id -u)/com.obsidian-notes-rag.watcher`
+- Check status: `launchctl list | grep obsidian`
+
+## Release Process
+
+Automated via semantic-release + GitHub Actions:
+- Merge `fix:`/`feat:` commits to main → Release workflow bumps version, creates GitHub release, publishes to PyPI
+- No manual `uv publish` needed — GitHub Actions handles it via trusted publishing
+- PyPI token (for manual fallback) is in 1Password under "PyPI" > "account level api token"
 
 ## Testing
 
