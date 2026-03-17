@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v1.1.1 (2026-03-17)
+
+### Bug Fixes
+
+- Address post-merge review issues from PR #12
+  ([`c59b652`](https://github.com/proofgeist/obsidian-notes-rag/commit/c59b65248fec898e93c9e9bba13ef0b337826fcf))
+
+Code review fixes: - Fix sentinel-value limit detection in server.py (Optional[int] = None) -
+  Replace unbounded chunker cache with @lru_cache(maxsize=16) - Fix save_config dropping non-default
+  presets (e.g. preset="math") - Validate from_dict against _SERIALIZABLE_FIELDS instead of hasattr
+  - Anchor fenced code regex to line boundary - Sync watcher exclude patterns with VaultIndexer
+  defaults - Add missing test file newline
+
+Search quality improvements: - Use cosine distance metric in sqlite-vec (was L2/Euclidean) - Tighten
+  defaults: preserve_code_blocks=True, similarity_threshold=0.10
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
 ## v1.1.0 (2026-03-17)
 
 ### Chores
