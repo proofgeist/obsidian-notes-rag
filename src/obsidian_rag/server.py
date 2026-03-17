@@ -81,8 +81,13 @@ def search_notes(
     Returns:
         List of matching notes with content, file path, and similarity score
     """
+    config = get_config()
     embedder = get_embedder()
     store = get_store()
+
+    # Use config default if caller used the function default
+    if limit == 10:
+        limit = config.indexer.default_search_limit
 
     # Generate query embedding
     query_embedding = embedder.embed(query, task_type="search_query")
@@ -92,6 +97,9 @@ def search_notes(
 
     # Search
     results = store.search(query_embedding, limit=limit, where=where)
+
+    # Apply similarity threshold from config
+    threshold = config.indexer.similarity_threshold
 
     # Format results
     return [
@@ -103,6 +111,7 @@ def search_notes(
             "type": r["metadata"].get("type", "note")
         }
         for r in results
+        if threshold <= 0 or (1 - r["distance"]) >= threshold
     ]
 
 
@@ -117,8 +126,13 @@ def get_similar(note_path: str, limit: int = 5) -> list[dict]:
     Returns:
         List of similar notes with content preview and similarity score
     """
+    config = get_config()
     embedder = get_embedder()
     store = get_store()
+
+    # Use config default if caller used the function default
+    if limit == 5:
+        limit = config.indexer.default_similar_limit
 
     # Get all chunks from this note by direct lookup
     results = store.get_by_file(note_path)
@@ -163,8 +177,13 @@ def get_note_context(note_path: str, limit: int = 5) -> dict:
     Returns:
         Note content and list of similar notes for context
     """
+    config = get_config()
     embedder = get_embedder()
     store = get_store()
+
+    # Use config default if caller used the function default
+    if limit == 5:
+        limit = config.indexer.default_context_limit
 
     # Get all chunks from this file by direct lookup
     results = store.get_by_file(note_path)
@@ -214,7 +233,7 @@ def reindex(clear: bool = False, path_filter: Optional[str] = None) -> dict:
     if not config.vault_path:
         return {"error": "No vault path configured. Run 'obsidian-rag setup' first."}
 
-    indexer = VaultIndexer(vault_path=config.vault_path, embedder=embedder)
+    indexer = VaultIndexer(vault_path=config.vault_path, embedder=embedder, config=config.indexer)
 
     if clear:
         store.clear()

@@ -14,6 +14,8 @@ except ImportError:
 
 import tomli_w
 from platformdirs import user_config_dir, user_data_dir
+from .indexer import IndexerConfig
+
 
 APP_NAME = "obsidian-notes-rag"
 
@@ -85,6 +87,7 @@ class Config:
 
     # OpenAI model (optional override)
     openai_model: str = "text-embedding-3-small"
+    indexer: IndexerConfig = field(default_factory=IndexerConfig)
 
     def get_data_path(self) -> str:
         """Get the data path, using default if not set."""
@@ -132,6 +135,10 @@ def load_config() -> Config:
             if "lmstudio" in data:
                 config.lmstudio_url = data["lmstudio"].get("url", config.lmstudio_url)
                 config.lmstudio_model = data["lmstudio"].get("model", config.lmstudio_model)
+
+            # Indexer settings
+            if "indexer" in data:
+                config.indexer = IndexerConfig.from_dict(data["indexer"])
 
         except Exception:
             pass  # Use defaults if config file is invalid
@@ -205,6 +212,11 @@ def save_config(config: Config) -> Path:
             lmstudio_section["model"] = config.lmstudio_model
         if lmstudio_section:
             data["lmstudio"] = lmstudio_section
+
+    # Indexer settings — only write if non-default
+    indexer_dict = config.indexer.to_dict()
+    if len(indexer_dict) > 1:  # more than just {"preset": "default"}
+        data["indexer"] = indexer_dict
 
     with open(config_path, "wb") as f:
         tomli_w.dump(data, f)

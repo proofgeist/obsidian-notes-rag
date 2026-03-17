@@ -236,7 +236,7 @@ def setup():
                 )
 
             store = VectorStore(data_path=config.get_data_path())
-            indexer = VaultIndexer(vault_path=config.vault_path, embedder=embedder)
+            indexer = VaultIndexer(vault_path=config.vault_path, embedder=embedder, config=config.indexer)
 
             files = list(indexer.iter_markdown_files())
             chunk_count = 0
@@ -328,7 +328,7 @@ def index(ctx, clear, path_filter):
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
     config = ctx.obj["config"]
-    
+
     # Get model from CLI override or config file based on provider
     model = ctx.obj["model"]
     if model is None:
@@ -355,7 +355,7 @@ def index(ctx, clear, path_filter):
     # Initialize components
     embedder = create_embedder(provider=provider, model=model, base_url=base_url)
     store = VectorStore(data_path=data_path)
-    indexer = VaultIndexer(vault_path=vault_path, embedder=embedder)
+    indexer = VaultIndexer(vault_path=vault_path, embedder=embedder, config=config.indexer)
 
     if clear:
         click.echo("Clearing existing index...")
@@ -414,7 +414,7 @@ def search(ctx, query, limit, note_type):
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
     config = ctx.obj["config"]
-    
+
     # Get model from CLI override or config file based on provider
     model = ctx.obj["model"]
     if model is None:

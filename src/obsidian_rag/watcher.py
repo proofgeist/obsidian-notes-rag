@@ -26,7 +26,7 @@ from watchdog.observers import Observer
 from watchdog.observers.api import BaseObserver
 
 from .config import load_config
-from .indexer import create_embedder, Embedder, VaultIndexer
+from .indexer import create_embedder, Embedder, VaultIndexer, IndexerConfig
 from .store import VectorStore
 
 # Retry configuration
@@ -165,6 +165,7 @@ class NoteEventHandler(FileSystemEventHandler):
         debounce_delay: float = 2.0,
         exclude_patterns: Optional[list[str]] = None,
         retry_queue: Optional[RetryQueue] = None,
+        indexer_config: Optional[IndexerConfig] = None,
     ):
         super().__init__()
         self.vault_path = vault_path
@@ -181,6 +182,7 @@ class NoteEventHandler(FileSystemEventHandler):
             vault_path=vault_path,
             embedder=embedder,
             exclude_patterns=self.exclude_patterns,
+            config=indexer_config,
         )
 
     def _should_ignore(self, path: Path) -> bool:
@@ -404,6 +406,7 @@ class VaultWatcher:
             store=self.store,
             debounce_delay=self.debounce_delay,
             retry_queue=self.retry_queue,
+            indexer_config=_config.indexer,
         )
 
         observer = Observer()
