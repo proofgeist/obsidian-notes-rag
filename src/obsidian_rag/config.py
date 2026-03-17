@@ -213,9 +213,9 @@ def save_config(config: Config) -> Path:
         if lmstudio_section:
             data["lmstudio"] = lmstudio_section
 
-    # Indexer settings — only write if non-default
+    # Indexer settings — write if preset is non-default OR any overrides are present
     indexer_dict = config.indexer.to_dict()
-    if len(indexer_dict) > 1:  # more than just {"preset": "default"}
+    if indexer_dict.get("preset", "default") != "default" or len(indexer_dict) > 1:
         data["indexer"] = indexer_dict
 
     with open(config_path, "wb") as f:

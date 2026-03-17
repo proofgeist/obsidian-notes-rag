@@ -79,7 +79,7 @@ class VectorStore:
         self.db.execute(f"""
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vec USING vec0(
                 id TEXT PRIMARY KEY,
-                embedding float[{dim}]
+                embedding float[{dim}] distance_metric=cosine
             )
         """)
         self.db.commit()

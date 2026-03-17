@@ -149,6 +149,26 @@ class TestSearch:
         assert len(results) == 1
         assert results[0]["metadata"]["file_path"] == "target.md"
 
+    def test_cosine_distance_produces_valid_similarity(self, store):
+        """Distance metric must be cosine so 1-distance gives 0-1 similarity."""
+        chunks = [
+            make_chunk("c1", "Exact match", "a.md"),
+            make_chunk("c2", "Orthogonal", "b.md"),
+        ]
+        embeddings = [
+            [1.0, 0.0, 0.0, 0.0],  # same direction as query
+            [0.0, 1.0, 0.0, 0.0],  # orthogonal to query
+        ]
+        store.upsert_batch(chunks, embeddings)
+
+        results = store.search([1.0, 0.0, 0.0, 0.0], limit=2)
+        for r in results:
+            similarity = 1 - r["distance"]
+            assert 0.0 <= similarity <= 1.0, (
+                f"Similarity {similarity:.3f} out of range — "
+                f"distance metric may not be cosine"
+            )
+
     def test_empty_search(self, store):
         """Searching an empty store returns empty list."""
         results = store.search([1.0, 0.0, 0.0, 0.0], limit=5)

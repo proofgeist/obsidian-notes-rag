@@ -6,6 +6,7 @@ import hashlib
 import re
 import uuid
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterator, Optional, List, Dict, Tuple
 
@@ -33,8 +34,8 @@ class IndexerConfig:
     min_characters_per_chunk: int = 50
     heading_split_depth: int = 4
     preserve_latex_blocks: bool = False
-    preserve_code_blocks: bool = False
-    similarity_threshold: float = 0.0
+    preserve_code_blocks: bool = True
+    similarity_threshold: float = 0.10
     default_search_limit: int = 10
     default_similar_limit: int = 5
     default_context_limit: int = 5
@@ -55,8 +56,8 @@ class IndexerConfig:
         defaults.min_characters_per_chunk = 50
         defaults.heading_split_depth = 4
         defaults.preserve_latex_blocks = False
-        defaults.preserve_code_blocks = False
-        defaults.similarity_threshold = 0.0
+        defaults.preserve_code_blocks = True
+        defaults.similarity_threshold = 0.10
         defaults.default_search_limit = 10
         defaults.default_similar_limit = 5
         defaults.default_context_limit = 5
@@ -75,8 +76,8 @@ class IndexerConfig:
         base.min_characters_per_chunk = 50
         base.heading_split_depth = 4
         base.preserve_latex_blocks = False
-        base.preserve_code_blocks = False
-        base.similarity_threshold = 0.0
+        base.preserve_code_blocks = True
+        base.similarity_threshold = 0.10
         base.default_search_limit = 10
         base.default_similar_limit = 5
         base.default_context_limit = 5
@@ -100,7 +101,7 @@ class IndexerConfig:
         for k, v in data.items():
             if k == "preset":
                 continue
-            if hasattr(cfg, k):
+            if k in _SERIALIZABLE_FIELDS:
                 setattr(cfg, k, v)
         return cfg
 
@@ -171,7 +172,7 @@ _DISPLAY_MATH_RE = re.compile(
     re.DOTALL,
 )
 _FENCED_CODE_RE = re.compile(
-    r"(```.*?```)",
+    r"(```[^\n]*\n.*?\n```)",
     re.DOTALL,
 )
 
@@ -208,9 +209,6 @@ def _restore_blocks(text: str) -> str:
     return text.replace(_NEWLINE_MASK, "\n")
 
 
-_chunker_cache: Dict[int, RecursiveChunker] = {}
-
-
 def _build_rules(cfg: IndexerConfig) -> RecursiveRules:
     """Build RecursiveRules according to heading_split_depth."""
     levels: List[RecursiveLevel] = []
@@ -237,22 +235,15 @@ def _build_rules(cfg: IndexerConfig) -> RecursiveRules:
     return RecursiveRules(levels=levels)
 
 
-def _get_chunker(cfg: IndexerConfig) -> RecursiveChunker:
-    """Get or create a RecursiveChunker for the given config."""
-    cache_key = (
-        cfg.chunk_size,
-        cfg.chunk_overlap,
-        cfg.min_characters_per_chunk,
-        cfg.heading_split_depth,
+@lru_cache(maxsize=16)
+def _get_chunker(chunk_size: int, chunk_overlap: int, min_characters_per_chunk: int, heading_split_depth: int) -> RecursiveChunker:
+    """Get or create a cached RecursiveChunker for the given parameters."""
+    cfg = IndexerConfig(heading_split_depth=heading_split_depth)
+    return RecursiveChunker(
+        chunk_size=chunk_size,
+        rules=_build_rules(cfg),
+        min_characters_per_chunk=min_characters_per_chunk,
     )
-    h = hash(cache_key)
-    if h not in _chunker_cache:
-        _chunker_cache[h] = RecursiveChunker(
-            chunk_size=cfg.chunk_size,
-            rules=_build_rules(cfg),
-            min_characters_per_chunk=cfg.min_characters_per_chunk,
-        )
-    return _chunker_cache[h]
 
 
 _default_config = IndexerConfig()
@@ -281,7 +272,12 @@ def chunk_markdown(
 
     protected_body = _protect_blocks(body, cfg)
 
-    chunker = _get_chunker(cfg)
+    chunker = _get_chunker(
+        cfg.chunk_size,
+        cfg.chunk_overlap,
+        cfg.min_characters_per_chunk,
+        cfg.heading_split_depth,
+    )
     chonkie_chunks = chunker.chunk(protected_body)
 
     note_type = "daily" if file_path.startswith("Daily Notes/") else "note"

@@ -21,8 +21,8 @@ class TestIndexerConfigDefaults:
         assert cfg.min_characters_per_chunk == 50
         assert cfg.heading_split_depth == 4
         assert cfg.preserve_latex_blocks is False
-        assert cfg.preserve_code_blocks is False
-        assert cfg.similarity_threshold == 0.0
+        assert cfg.preserve_code_blocks is True
+        assert cfg.similarity_threshold == 0.10
         assert cfg.extra_exclude_patterns == []
 
     def test_explicit_override(self):
@@ -113,7 +113,7 @@ class TestBlockProtection:
     """Test newline masking inside LaTeX and code blocks."""
 
     def test_no_protection_when_disabled(self):
-        cfg = IndexerConfig()
+        cfg = IndexerConfig(preserve_code_blocks=False)
         body = "Text\n$$\na + b\n$$\nMore"
         result = _protect_blocks(body, cfg)
         assert result == body
@@ -135,6 +135,16 @@ class TestBlockProtection:
         inside = result[start:end]
         assert "\n" not in inside
         assert _NEWLINE_MASK in inside
+
+    def test_code_blocks_protected_by_default(self):
+        """Code blocks should be protected from splitting with default config."""
+        cfg = IndexerConfig()
+        body = "Text\n```python\ndef foo():\n    pass\n```\nMore"
+        result = _protect_blocks(body, cfg)
+        start = result.index("```python")
+        end = result.rindex("```") + 3
+        inside = result[start:end]
+        assert "\n" not in inside
 
     def test_code_block_masked(self):
         cfg = IndexerConfig(preserve_code_blocks=True)

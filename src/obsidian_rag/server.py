@@ -68,14 +68,14 @@ def get_store() -> VectorStore:
 @mcp.tool()
 def search_notes(
     query: str,
-    limit: int = 10,
+    limit: Optional[int] = None,
     note_type: Optional[str] = None
 ) -> list[dict]:
     """Search notes using semantic similarity.
 
     Args:
         query: Search query text
-        limit: Maximum number of results (default: 10)
+        limit: Maximum number of results (default: from config)
         note_type: Optional filter - "daily" or "note"
 
     Returns:
@@ -85,8 +85,8 @@ def search_notes(
     embedder = get_embedder()
     store = get_store()
 
-    # Use config default if caller used the function default
-    if limit == 10:
+    # Use config default if caller did not provide a limit
+    if limit is None:
         limit = config.indexer.default_search_limit
 
     # Generate query embedding
@@ -116,12 +116,12 @@ def search_notes(
 
 
 @mcp.tool()
-def get_similar(note_path: str, limit: int = 5) -> list[dict]:
+def get_similar(note_path: str, limit: Optional[int] = None) -> list[dict]:
     """Find notes similar to the given note.
 
     Args:
         note_path: Path to the note (relative to vault root)
-        limit: Number of similar notes to return (default: 5)
+        limit: Number of similar notes to return (default: from config)
 
     Returns:
         List of similar notes with content preview and similarity score
@@ -130,8 +130,8 @@ def get_similar(note_path: str, limit: int = 5) -> list[dict]:
     embedder = get_embedder()
     store = get_store()
 
-    # Use config default if caller used the function default
-    if limit == 5:
+    # Use config default if caller did not provide a limit
+    if limit is None:
         limit = config.indexer.default_similar_limit
 
     # Get all chunks from this note by direct lookup
@@ -167,22 +167,21 @@ def get_similar(note_path: str, limit: int = 5) -> list[dict]:
 
 
 @mcp.tool()
-def get_note_context(note_path: str, limit: int = 5) -> dict:
+def get_note_context(note_path: str, limit: Optional[int] = None) -> dict:
     """Get a note and its related context.
 
     Args:
         note_path: Path to the note (relative to vault root)
-        limit: Number of similar notes to include (default: 5)
+        limit: Number of similar notes to include (default: from config)
 
     Returns:
         Note content and list of similar notes for context
     """
     config = get_config()
-    embedder = get_embedder()
     store = get_store()
 
-    # Use config default if caller used the function default
-    if limit == 5:
+    # Use config default if caller did not provide a limit
+    if limit is None:
         limit = config.indexer.default_context_limit
 
     # Get all chunks from this file by direct lookup

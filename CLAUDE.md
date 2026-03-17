@@ -60,7 +60,7 @@ MCP Client ← FastMCP Server ← search_notes/get_similar/etc.
 
 ### Chunking Strategy
 
-Files are chunked using Chonkie's RecursiveChunker with markdown-aware splitting rules. Maximum chunk size is 1500 tokens with a minimum of 50 characters per chunk. The chunker splits by heading levels > paragraphs > lines > sentences > words.
+Files are chunked using Chonkie's RecursiveChunker with markdown-aware splitting rules. Maximum chunk size is 1500 tokens with a minimum of 50 characters per chunk. The chunker splits by heading levels > paragraphs > lines > sentences > words. Fenced code blocks are preserved from mid-block splitting by default (`preserve_code_blocks = True`). Results below the similarity threshold (default 0.10) are filtered out.
 
 ### Metadata
 
@@ -101,6 +101,7 @@ Automated via semantic-release + GitHub Actions:
 Tests are in `tests/`:
 - `test_store.py` - VectorStore contract tests (sqlite-vec backend)
 - `test_indexer.py` - Frontmatter parsing and chunk_markdown tests
+- `test_indexer_config.py` - IndexerConfig presets, serialization, and block preservation tests
 - `test_cli.py` - CLI command tests
 
 ```bash

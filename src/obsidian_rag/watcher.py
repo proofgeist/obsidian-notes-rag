@@ -177,6 +177,13 @@ class NoteEventHandler(FileSystemEventHandler):
             "attachments/**",
             ".obsidian/**",
             ".trash/**",
+            ".venv/**",
+            "node_modules/**",
+            "__pycache__/**",
+            "*.egg-info/**",
+            "build/**",
+            "dist/**",
+            ".git/**",
         ]
         self.indexer = VaultIndexer(
             vault_path=vault_path,
