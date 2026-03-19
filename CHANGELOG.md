@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v1.1.2 (2026-03-19)
+
+### Bug Fixes
+
+- Upgrade GitHub Actions to Node.js 24-compatible versions
+  ([`aba5d56`](https://github.com/proofgeist/obsidian-notes-rag/commit/aba5d56fbadbc813f895cc4d88cb1b5dc74b7096))
+
+Bump actions/checkout v4→v5 and astral-sh/setup-uv v4→v5 to resolve Node.js 20 deprecation warnings.
+
+Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+
+
 ## v1.1.1 (2026-03-17)
 
 ### Bug Fixes
