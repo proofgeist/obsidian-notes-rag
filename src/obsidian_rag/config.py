@@ -80,10 +80,12 @@ class Config:
     # Ollama settings
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "nomic-embed-text"
+    ollama_api_key: Optional[str] = None  # Bearer token for protected Ollama instances
 
     # LM Studio settings
     lmstudio_url: str = "http://localhost:1234"
     lmstudio_model: str = "text-embedding-nomic-embed-text-v1.5"
+    lmstudio_api_key: Optional[str] = None  # Bearer token for protected LM Studio instances
 
     # OpenAI model (optional override)
     openai_model: str = "text-embedding-3-small"
@@ -96,6 +98,14 @@ class Config:
     def get_openai_api_key(self) -> Optional[str]:
         """Get OpenAI API key from config or environment."""
         return self.openai_api_key or os.environ.get("OPENAI_API_KEY")
+
+    def get_ollama_api_key(self) -> Optional[str]:
+        """Get Ollama Bearer token from config or environment."""
+        return self.ollama_api_key or os.environ.get("OBSIDIAN_RAG_OLLAMA_API_KEY")
+
+    def get_lmstudio_api_key(self) -> Optional[str]:
+        """Get LM Studio Bearer token from config or environment."""
+        return self.lmstudio_api_key or os.environ.get("OBSIDIAN_RAG_LMSTUDIO_API_KEY")
 
 
 def load_config() -> Config:
@@ -130,11 +140,13 @@ def load_config() -> Config:
             if "ollama" in data:
                 config.ollama_url = data["ollama"].get("url", config.ollama_url)
                 config.ollama_model = data["ollama"].get("model", config.ollama_model)
+                config.ollama_api_key = data["ollama"].get("api_key", config.ollama_api_key)
 
             # LM Studio settings
             if "lmstudio" in data:
                 config.lmstudio_url = data["lmstudio"].get("url", config.lmstudio_url)
                 config.lmstudio_model = data["lmstudio"].get("model", config.lmstudio_model)
+                config.lmstudio_api_key = data["lmstudio"].get("api_key", config.lmstudio_api_key)
 
             # Indexer settings
             if "indexer" in data:
@@ -154,6 +166,11 @@ def load_config() -> Config:
         config.ollama_url = os.environ["OBSIDIAN_RAG_OLLAMA_URL"]
     if os.environ.get("OBSIDIAN_RAG_LMSTUDIO_URL"):
         config.lmstudio_url = os.environ["OBSIDIAN_RAG_LMSTUDIO_URL"]
+    # Bearer token overrides for local providers
+    if os.environ.get("OBSIDIAN_RAG_OLLAMA_API_KEY"):
+        config.ollama_api_key = os.environ["OBSIDIAN_RAG_OLLAMA_API_KEY"]
+    if os.environ.get("OBSIDIAN_RAG_LMSTUDIO_API_KEY"):
+        config.lmstudio_api_key = os.environ["OBSIDIAN_RAG_LMSTUDIO_API_KEY"]
     if os.environ.get("OBSIDIAN_RAG_MODEL"):
         if config.provider == "ollama":
             config.ollama_model = os.environ["OBSIDIAN_RAG_MODEL"]
@@ -200,6 +217,8 @@ def save_config(config: Config) -> Path:
             ollama_section["url"] = config.ollama_url
         if config.ollama_model != "nomic-embed-text":
             ollama_section["model"] = config.ollama_model
+        if config.ollama_api_key:
+            ollama_section["api_key"] = config.ollama_api_key
         if ollama_section:
             data["ollama"] = ollama_section
 
@@ -210,6 +229,8 @@ def save_config(config: Config) -> Path:
             lmstudio_section["url"] = config.lmstudio_url
         if config.lmstudio_model != "text-embedding-nomic-embed-text-v1.5":
             lmstudio_section["model"] = config.lmstudio_model
+        if config.lmstudio_api_key:
+            lmstudio_section["api_key"] = config.lmstudio_api_key
         if lmstudio_section:
             data["lmstudio"] = lmstudio_section
 
