@@ -352,11 +352,15 @@ class OllamaEmbedder:
     def __init__(
         self,
         base_url: str = "http://localhost:11434",
-        model: str = "nomic-embed-text"
+        model: str = "nomic-embed-text",
+        api_key: Optional[str] = None,
     ):
         self.base_url = base_url
         self.model = model
-        self.client = httpx.Client(timeout=60.0)
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self.client = httpx.Client(timeout=60.0, headers=headers)
 
     def _get_prefix(self, task_type: str) -> str:
         """Get task-specific prefix for models that support them."""
@@ -393,11 +397,15 @@ class LMStudioEmbedder:
     def __init__(
         self,
         base_url: str = "http://localhost:1234",
-        model: str = "text-embedding-nomic-embed-text-v1.5"
+        model: str = "text-embedding-nomic-embed-text-v1.5",
+        api_key: Optional[str] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model = model
-        self.client = httpx.Client(timeout=60.0)
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self.client = httpx.Client(timeout=60.0, headers=headers)
 
     def _get_prefix(self, task_type: str) -> str:
         model = self.model.lower()
@@ -500,6 +508,7 @@ def create_embedder(
     provider: str = "openai",
     model: Optional[str] = None,
     base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Embedder:
     """Create an embedder instance for the specified provider."""
     if provider == "openai":
@@ -513,6 +522,8 @@ def create_embedder(
             kwargs["model"] = model
         if base_url:
             kwargs["base_url"] = base_url
+        if api_key:
+            kwargs["api_key"] = api_key
         return OllamaEmbedder(**kwargs)
     elif provider == "lmstudio":
         kwargs = {}
@@ -520,6 +531,8 @@ def create_embedder(
             kwargs["model"] = model
         if base_url:
             kwargs["base_url"] = base_url
+        if api_key:
+            kwargs["api_key"] = api_key
         return LMStudioEmbedder(**kwargs)
     else:
         raise ValueError(f"Unknown provider: {provider}. Use 'openai', 'ollama', or 'lmstudio'.")

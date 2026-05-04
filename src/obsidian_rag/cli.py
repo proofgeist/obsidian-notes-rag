@@ -37,9 +37,13 @@ DEFAULT_LMSTUDIO_URL = "http://localhost:1234"
               help="Ollama API URL (only used with --provider ollama)")
 @click.option("--lmstudio-url", default=None,
               help="LM Studio API URL (only used with --provider lmstudio)")
+@click.option("--ollama-api-key", default=None,
+              help="Bearer token for Ollama (only used with --provider ollama)")
+@click.option("--lmstudio-api-key", default=None,
+              help="Bearer token for LM Studio (only used with --provider lmstudio)")
 @click.option("--model", default=None, help="Override embedding model name")
 @click.pass_context
-def main(ctx, vault, data, provider, ollama_url, lmstudio_url, model):
+def main(ctx, vault, data, provider, ollama_url, lmstudio_url, ollama_api_key, lmstudio_api_key, model):
     """Obsidian RAG - Semantic search for your Obsidian vault."""
     ctx.ensure_object(dict)
 
@@ -51,6 +55,8 @@ def main(ctx, vault, data, provider, ollama_url, lmstudio_url, model):
     ctx.obj["provider"] = provider or config.provider
     ctx.obj["ollama_url"] = ollama_url or config.ollama_url
     ctx.obj["lmstudio_url"] = lmstudio_url or config.lmstudio_url
+    ctx.obj["ollama_api_key"] = ollama_api_key or config.get_ollama_api_key()
+    ctx.obj["lmstudio_api_key"] = lmstudio_api_key or config.get_lmstudio_api_key()
     ctx.obj["model"] = model  # None means use provider default
     ctx.obj["config"] = config
 
@@ -105,6 +111,10 @@ def setup():
         )
         config.ollama_url = ollama_url
         
+        # Optional Bearer token
+        if click.confirm("\nDoes your Ollama instance require a Bearer token?", default=False):
+            config.ollama_api_key = click.prompt("Enter Bearer token", hide_input=True)
+
         # Verify connection and get available models
         click.echo("Checking Ollama server...", nl=False)
         server_running = is_ollama_running(ollama_url)
@@ -149,6 +159,10 @@ def setup():
         )
         config.lmstudio_url = lmstudio_url
         
+        # Optional Bearer token
+        if click.confirm("\nDoes your LM Studio instance require a Bearer token?", default=False):
+            config.lmstudio_api_key = click.prompt("Enter Bearer token", hide_input=True)
+
         # Verify connection and get available models
         click.echo("Checking LM Studio server...", nl=False)
         server_running = is_lmstudio_running(lmstudio_url)
@@ -226,13 +240,15 @@ def setup():
                 embedder = create_embedder(
                     provider="ollama",
                     model=config.ollama_model,
-                    base_url=config.ollama_url
+                    base_url=config.ollama_url,
+                    api_key=config.get_ollama_api_key(),
                 )
             else:  # lmstudio
                 embedder = create_embedder(
                     provider="lmstudio",
                     model=config.lmstudio_model,
-                    base_url=config.lmstudio_url
+                    base_url=config.lmstudio_url,
+                    api_key=config.get_lmstudio_api_key(),
                 )
 
             store = VectorStore(data_path=config.get_data_path())
@@ -291,7 +307,9 @@ def setup():
                     config.data_path or str(get_data_dir()),
                     config.provider,
                     config.ollama_url,
-                    None  # model
+                    None,  # model
+                    config.get_ollama_api_key(),
+                    config.get_lmstudio_api_key(),
                 )
                 plist_path.write_text(plist_content)
 
@@ -327,6 +345,8 @@ def index(ctx, clear, path_filter):
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     config = ctx.obj["config"]
 
     # Get model from CLI override or config file based on provider
@@ -344,16 +364,19 @@ def index(ctx, clear, path_filter):
     click.echo(f"Provider: {provider}")
     click.echo(f"Model: {model}")
 
-    # Determine the correct base_url based on provider
+    # Determine the correct base_url and api_key based on provider
     if provider == "ollama":
         base_url = ollama_url
+        api_key = ollama_api_key
     elif provider == "lmstudio":
         base_url = lmstudio_url
+        api_key = lmstudio_api_key
     else:
         base_url = None
+        api_key = None
 
     # Initialize components
-    embedder = create_embedder(provider=provider, model=model, base_url=base_url)
+    embedder = create_embedder(provider=provider, model=model, base_url=base_url, api_key=api_key)
     store = VectorStore(data_path=data_path)
     indexer = VaultIndexer(vault_path=vault_path, embedder=embedder, config=config.indexer)
 
@@ -413,6 +436,8 @@ def search(ctx, query, limit, note_type):
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     config = ctx.obj["config"]
 
     # Get model from CLI override or config file based on provider
@@ -425,16 +450,19 @@ def search(ctx, query, limit, note_type):
         elif provider == "lmstudio":
             model = config.lmstudio_model
 
-    # Determine the correct base_url based on provider
+    # Determine the correct base_url and api_key based on provider
     if provider == "ollama":
         base_url = ollama_url
+        api_key = ollama_api_key
     elif provider == "lmstudio":
         base_url = lmstudio_url
+        api_key = lmstudio_api_key
     else:
         base_url = None
+        api_key = None
 
     # Initialize components
-    embedder = create_embedder(provider=provider, model=model, base_url=base_url)
+    embedder = create_embedder(provider=provider, model=model, base_url=base_url, api_key=api_key)
     store = VectorStore(data_path=data_path)
 
     # Generate query embedding
@@ -486,6 +514,8 @@ def similar(ctx, note_path, limit):
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     config = ctx.obj["config"]
 
     model = ctx.obj["model"]
@@ -499,12 +529,15 @@ def similar(ctx, note_path, limit):
 
     if provider == "ollama":
         base_url = ollama_url
+        api_key = ollama_api_key
     elif provider == "lmstudio":
         base_url = lmstudio_url
+        api_key = lmstudio_api_key
     else:
         base_url = None
+        api_key = None
 
-    embedder = create_embedder(provider=provider, model=model, base_url=base_url)
+    embedder = create_embedder(provider=provider, model=model, base_url=base_url, api_key=api_key)
     store = VectorStore(data_path=data_path)
 
     click.echo(f"Finding notes similar to: {note_path}\n")
@@ -552,6 +585,8 @@ def context(ctx, note_path, limit):
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     config = ctx.obj["config"]
 
     model = ctx.obj["model"]
@@ -565,12 +600,15 @@ def context(ctx, note_path, limit):
 
     if provider == "ollama":
         base_url = ollama_url
+        api_key = ollama_api_key
     elif provider == "lmstudio":
         base_url = lmstudio_url
+        api_key = lmstudio_api_key
     else:
         base_url = None
+        api_key = None
 
-    embedder = create_embedder(provider=provider, model=model, base_url=base_url)
+    embedder = create_embedder(provider=provider, model=model, base_url=base_url, api_key=api_key)
     store = VectorStore(data_path=data_path)
 
     click.echo(f"Getting context for: {note_path}\n")
@@ -634,6 +672,8 @@ def watch(ctx, debounce):
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
     lmstudio_url = ctx.obj["lmstudio_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     model = ctx.obj["model"]
 
     click.echo(f"Watching vault: {vault_path}")
@@ -648,6 +688,8 @@ def watch(ctx, debounce):
         provider=provider,
         ollama_url=ollama_url,
         lmstudio_url=lmstudio_url,
+        ollama_api_key=ollama_api_key,
+        lmstudio_api_key=lmstudio_api_key,
         model=model,
         debounce_delay=debounce,
     )
@@ -698,7 +740,7 @@ def _uninstall_wrapper_script():
         wrapper_path.unlink()
 
 
-def _get_plist_content(vault_path: str, data_path: str, provider: str, ollama_url: str, model: str | None) -> str:
+def _get_plist_content(vault_path: str, data_path: str, provider: str, ollama_url: str, model: str | None, ollama_api_key: str | None = None, lmstudio_api_key: str | None = None) -> str:
     """Generate launchd plist content."""
     # Use wrapper script for better System Settings appearance
     wrapper_path = WRAPPER_SCRIPT_DIR / WRAPPER_SCRIPT_NAME
@@ -715,6 +757,14 @@ def _get_plist_content(vault_path: str, data_path: str, provider: str, ollama_ur
         env_vars += f"""
         <key>OBSIDIAN_RAG_OLLAMA_URL</key>
         <string>{ollama_url}</string>"""
+        if ollama_api_key:
+            env_vars += f"""
+        <key>OBSIDIAN_RAG_OLLAMA_API_KEY</key>
+        <string>{ollama_api_key}</string>"""
+    elif provider == "lmstudio" and lmstudio_api_key:
+        env_vars += f"""
+        <key>OBSIDIAN_RAG_LMSTUDIO_API_KEY</key>
+        <string>{lmstudio_api_key}</string>"""
 
     if model:
         env_vars += f"""
@@ -765,6 +815,8 @@ def install_service(ctx):
     data_path = ctx.obj["data"]
     provider = ctx.obj["provider"]
     ollama_url = ctx.obj["ollama_url"]
+    ollama_api_key = ctx.obj["ollama_api_key"]
+    lmstudio_api_key = ctx.obj["lmstudio_api_key"]
     model = ctx.obj["model"]
 
     plist_path = LAUNCH_AGENTS_DIR / PLIST_NAME
@@ -783,7 +835,7 @@ def install_service(ctx):
     click.echo(f"Created: {wrapper_path}")
 
     # Write plist
-    plist_content = _get_plist_content(vault_path, data_path, provider, ollama_url, model)
+    plist_content = _get_plist_content(vault_path, data_path, provider, ollama_url, model, ollama_api_key, lmstudio_api_key)
     plist_path.write_text(plist_content)
     click.echo(f"Created: {plist_path}")
 
