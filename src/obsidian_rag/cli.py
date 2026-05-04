@@ -113,7 +113,7 @@ def setup():
         
         # Optional Bearer token
         if click.confirm("\nDoes your Ollama instance require a Bearer token?", default=False):
-            config.ollama_api_key = click.prompt("Enter Bearer token", hide_input=True)
+            config.ollama_api_key = click.prompt("Enter Bearer token", hide_input=False)
 
         # Verify connection and get available models
         click.echo("Checking Ollama server...", nl=False)
@@ -161,7 +161,7 @@ def setup():
         
         # Optional Bearer token
         if click.confirm("\nDoes your LM Studio instance require a Bearer token?", default=False):
-            config.lmstudio_api_key = click.prompt("Enter Bearer token", hide_input=True)
+            config.lmstudio_api_key = click.prompt("Enter Bearer token", hide_input=False)
 
         # Verify connection and get available models
         click.echo("Checking LM Studio server...", nl=False)
