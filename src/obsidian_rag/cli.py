@@ -117,14 +117,14 @@ def setup():
 
         # Verify connection and get available models
         click.echo("Checking Ollama server...", nl=False)
-        server_running = is_ollama_running(ollama_url)
+        server_running = is_ollama_running(ollama_url, api_key=config.ollama_api_key)
         
         if server_running:
             click.echo(" ✓ connected")
             
             # Fetch available embedding models
             click.echo("Fetching available embedding models...", nl=False)
-            available_models = get_ollama_models(ollama_url)
+            available_models = get_ollama_models(ollama_url, api_key=config.ollama_api_key)
             
             if available_models:
                 click.echo(f" found {len(available_models)}")
@@ -165,14 +165,14 @@ def setup():
 
         # Verify connection and get available models
         click.echo("Checking LM Studio server...", nl=False)
-        server_running = is_lmstudio_running(lmstudio_url)
+        server_running = is_lmstudio_running(lmstudio_url, api_key=config.lmstudio_api_key)
         
         if server_running:
             click.echo(" ✓ connected")
             
             # Fetch available embedding models
             click.echo("Fetching available embedding models...", nl=False)
-            available_models = get_lmstudio_models(lmstudio_url)
+            available_models = get_lmstudio_models(lmstudio_url, api_key=config.lmstudio_api_key)
             
             if available_models:
                 click.echo(f" found {len(available_models)}")

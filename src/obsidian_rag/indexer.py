@@ -443,31 +443,34 @@ class LMStudioEmbedder:
         self.client.close()
 
 
-def is_lmstudio_running(base_url: str = "http://localhost:1234") -> bool:
+def is_lmstudio_running(base_url: str = "http://localhost:1234", api_key: Optional[str] = None) -> bool:
     """Check if LM Studio server is running."""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=2.0) as client:
+        with httpx.Client(timeout=2.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/v1/models")
-            return response.status_code == 200
+            return response.status_code in (200, 401)  # 401 = server up but wrong key
     except (httpx.RequestError, httpx.TimeoutException):
         return False
 
 
-def is_ollama_running(base_url: str = "http://localhost:11434") -> bool:
+def is_ollama_running(base_url: str = "http://localhost:11434", api_key: Optional[str] = None) -> bool:
     """Check if Ollama server is running."""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=2.0) as client:
+        with httpx.Client(timeout=2.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/api/tags")
-            return response.status_code == 200
+            return response.status_code in (200, 401)
     except (httpx.RequestError, httpx.TimeoutException):
         return False
 
 
-def get_lmstudio_models(base_url: str = "http://localhost:1234") -> List[str]:
+def get_lmstudio_models(base_url: str = "http://localhost:1234", api_key: Optional[str] = None) -> List[str]:
     """Get list of available embedding models from LM Studio."""
     embedding_keywords = ['embed', 'bge', 'minilm', 'e5', 'gte', 'instructor']
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=5.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/v1/models")
             if response.status_code != 200:
                 return []
@@ -482,11 +485,12 @@ def get_lmstudio_models(base_url: str = "http://localhost:1234") -> List[str]:
         return []
 
 
-def get_ollama_models(base_url: str = "http://localhost:11434") -> List[str]:
+def get_ollama_models(base_url: str = "http://localhost:11434", api_key: Optional[str] = None) -> List[str]:
     """Get list of available embedding models from Ollama."""
     embedding_keywords = ['embed', 'bge', 'minilm', 'e5', 'gte', 'instructor', 'nomic']
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=5.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/api/tags")
             if response.status_code != 200:
                 return []
