@@ -352,11 +352,15 @@ class OllamaEmbedder:
     def __init__(
         self,
         base_url: str = "http://localhost:11434",
-        model: str = "nomic-embed-text"
+        model: str = "nomic-embed-text",
+        api_key: Optional[str] = None,
     ):
         self.base_url = base_url
         self.model = model
-        self.client = httpx.Client(timeout=60.0)
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self.client = httpx.Client(timeout=60.0, headers=headers)
 
     def _get_prefix(self, task_type: str) -> str:
         """Get task-specific prefix for models that support them."""
@@ -393,11 +397,15 @@ class LMStudioEmbedder:
     def __init__(
         self,
         base_url: str = "http://localhost:1234",
-        model: str = "text-embedding-nomic-embed-text-v1.5"
+        model: str = "text-embedding-nomic-embed-text-v1.5",
+        api_key: Optional[str] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model = model
-        self.client = httpx.Client(timeout=60.0)
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self.client = httpx.Client(timeout=60.0, headers=headers)
 
     def _get_prefix(self, task_type: str) -> str:
         model = self.model.lower()
@@ -435,31 +443,34 @@ class LMStudioEmbedder:
         self.client.close()
 
 
-def is_lmstudio_running(base_url: str = "http://localhost:1234") -> bool:
+def is_lmstudio_running(base_url: str = "http://localhost:1234", api_key: Optional[str] = None) -> bool:
     """Check if LM Studio server is running."""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=2.0) as client:
+        with httpx.Client(timeout=2.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/v1/models")
-            return response.status_code == 200
+            return response.status_code in (200, 401)  # 401 = server up but wrong key
     except (httpx.RequestError, httpx.TimeoutException):
         return False
 
 
-def is_ollama_running(base_url: str = "http://localhost:11434") -> bool:
+def is_ollama_running(base_url: str = "http://localhost:11434", api_key: Optional[str] = None) -> bool:
     """Check if Ollama server is running."""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=2.0) as client:
+        with httpx.Client(timeout=2.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/api/tags")
-            return response.status_code == 200
+            return response.status_code in (200, 401)
     except (httpx.RequestError, httpx.TimeoutException):
         return False
 
 
-def get_lmstudio_models(base_url: str = "http://localhost:1234") -> List[str]:
+def get_lmstudio_models(base_url: str = "http://localhost:1234", api_key: Optional[str] = None) -> List[str]:
     """Get list of available embedding models from LM Studio."""
     embedding_keywords = ['embed', 'bge', 'minilm', 'e5', 'gte', 'instructor']
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=5.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/v1/models")
             if response.status_code != 200:
                 return []
@@ -474,11 +485,12 @@ def get_lmstudio_models(base_url: str = "http://localhost:1234") -> List[str]:
         return []
 
 
-def get_ollama_models(base_url: str = "http://localhost:11434") -> List[str]:
+def get_ollama_models(base_url: str = "http://localhost:11434", api_key: Optional[str] = None) -> List[str]:
     """Get list of available embedding models from Ollama."""
     embedding_keywords = ['embed', 'bge', 'minilm', 'e5', 'gte', 'instructor', 'nomic']
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=5.0, headers=headers) as client:
             response = client.get(f"{base_url.rstrip('/')}/api/tags")
             if response.status_code != 200:
                 return []
@@ -500,6 +512,7 @@ def create_embedder(
     provider: str = "openai",
     model: Optional[str] = None,
     base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Embedder:
     """Create an embedder instance for the specified provider."""
     if provider == "openai":
@@ -513,6 +526,8 @@ def create_embedder(
             kwargs["model"] = model
         if base_url:
             kwargs["base_url"] = base_url
+        if api_key:
+            kwargs["api_key"] = api_key
         return OllamaEmbedder(**kwargs)
     elif provider == "lmstudio":
         kwargs = {}
@@ -520,6 +535,8 @@ def create_embedder(
             kwargs["model"] = model
         if base_url:
             kwargs["base_url"] = base_url
+        if api_key:
+            kwargs["api_key"] = api_key
         return LMStudioEmbedder(**kwargs)
     else:
         raise ValueError(f"Unknown provider: {provider}. Use 'openai', 'ollama', or 'lmstudio'.")

@@ -37,21 +37,25 @@ def get_embedder() -> Embedder:
         if config.provider == "openai" and config.openai_api_key:
             os.environ["OPENAI_API_KEY"] = config.openai_api_key
         
-        # Determine model and base_url based on provider
+        # Determine model, base_url and api_key based on provider
         if config.provider == "openai":
             model = config.openai_model
             base_url = None
+            api_key = config.get_openai_api_key()
         elif config.provider == "ollama":
             model = config.ollama_model
             base_url = config.ollama_url
+            api_key = config.get_ollama_api_key()
         else:  # lmstudio
             model = config.lmstudio_model
             base_url = config.lmstudio_url
-        
+            api_key = config.get_lmstudio_api_key()
+
         _embedder = create_embedder(
             provider=config.provider,
             model=model,
             base_url=base_url,
+            api_key=api_key,
         )
     return _embedder
 

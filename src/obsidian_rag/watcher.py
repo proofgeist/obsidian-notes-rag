@@ -44,6 +44,8 @@ DEFAULT_DATA_PATH = _config.get_data_path()
 DEFAULT_PROVIDER = _config.provider
 DEFAULT_OLLAMA_URL = _config.ollama_url
 DEFAULT_LMSTUDIO_URL = _config.lmstudio_url
+DEFAULT_OLLAMA_API_KEY: Optional[str] = _config.get_ollama_api_key()
+DEFAULT_LMSTUDIO_API_KEY: Optional[str] = _config.get_lmstudio_api_key()
 DEFAULT_MODEL: Optional[str] = None  # Use provider default
 DEFAULT_DEBOUNCE = float(os.environ.get("OBSIDIAN_RAG_DEBOUNCE", "2.0"))
 
@@ -326,6 +328,8 @@ class VaultWatcher:
         provider: str = DEFAULT_PROVIDER,
         ollama_url: str = DEFAULT_OLLAMA_URL,
         lmstudio_url: str = DEFAULT_LMSTUDIO_URL,
+        ollama_api_key: Optional[str] = DEFAULT_OLLAMA_API_KEY,
+        lmstudio_api_key: Optional[str] = DEFAULT_LMSTUDIO_API_KEY,
         model: Optional[str] = DEFAULT_MODEL,
         debounce_delay: float = DEFAULT_DEBOUNCE,
     ):
@@ -337,9 +341,10 @@ class VaultWatcher:
         if provider == "openai" and _config.openai_api_key:
             os.environ["OPENAI_API_KEY"] = _config.openai_api_key
 
-        # Determine correct base_url based on provider
+        # Determine correct base_url and api_key based on provider
         if provider == "ollama":
             base_url = ollama_url
+            api_key = ollama_api_key
             # Health check for Ollama before starting
             if not check_ollama_health(ollama_url):
                 logger.warning("Ollama is not running! Waiting for it to start...")
@@ -347,10 +352,12 @@ class VaultWatcher:
                 self._wait_for_ollama(ollama_url)
         elif provider == "lmstudio":
             base_url = lmstudio_url
+            api_key = lmstudio_api_key
         else:
             base_url = None
+            api_key = None
 
-        self.embedder = create_embedder(provider=provider, model=model, base_url=base_url)
+        self.embedder = create_embedder(provider=provider, model=model, base_url=base_url, api_key=api_key)
         self.store = VectorStore(data_path=data_path)
         self.debounce_delay = debounce_delay
         self.retry_queue = RetryQueue()
@@ -508,6 +515,8 @@ def run_watcher(
     provider: str = DEFAULT_PROVIDER,
     ollama_url: str = DEFAULT_OLLAMA_URL,
     lmstudio_url: str = DEFAULT_LMSTUDIO_URL,
+    ollama_api_key: Optional[str] = DEFAULT_OLLAMA_API_KEY,
+    lmstudio_api_key: Optional[str] = DEFAULT_LMSTUDIO_API_KEY,
     model: Optional[str] = DEFAULT_MODEL,
     debounce: float = DEFAULT_DEBOUNCE,
 ):
@@ -524,6 +533,8 @@ def run_watcher(
         provider=provider,
         ollama_url=ollama_url,
         lmstudio_url=lmstudio_url,
+        ollama_api_key=ollama_api_key,
+        lmstudio_api_key=lmstudio_api_key,
         model=model,
         debounce_delay=debounce,
     )
